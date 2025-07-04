@@ -47,9 +47,10 @@ func NewKVIndexer(db dbm.DB, logger log.Logger, clientCtx client.Context) *KVInd
 // - Iterates over all the messages of the Tx
 // - Builds and stores a indexer.TxResult based on parsed events for every message
 func (kv *KVIndexer) IndexBlock(block *cmtypes.Block, txResults []*abci.ExecTxResult) (err error) {
+	kv.logger.Warn("⚠️ IndexBlock start!")
 	defer func(err *error) {
 		if e := recover(); e != nil {
-			kv.logger.Debug("panic during parsing block results", "error", e)
+			kv.logger.Error("panic during parsing block results", "error", e)
 
 			if ee, ok := e.(error); ok {
 				*err = ee
@@ -59,10 +60,12 @@ func (kv *KVIndexer) IndexBlock(block *cmtypes.Block, txResults []*abci.ExecTxRe
 		}
 	}(&err)
 
-	kv.logger.Debug("(KVIndexer) IndexBlock", "height", block.Height, "txns:", len(block.Txs))
+	kv.logger.Error("(KVIndexer) IndexBlock", "height", block.Height, "txns:", len(block.Txs))
 
 	batch := kv.db.NewBatch()
 	defer batch.Close()
+
+	kv.logger.Warn("⚠️ Start Txs Indexing!!!")
 
 	// record index of valid eth tx during the iteration
 	var ethTxIndex int32
@@ -135,6 +138,9 @@ func (kv *KVIndexer) IndexBlock(block *cmtypes.Block, txResults []*abci.ExecTxRe
 	if err := batch.Write(); err != nil {
 		return errorsmod.Wrapf(err, "IndexBlock %d, write batch", block.Height)
 	}
+
+	kv.logger.Warn("⚠️ End all indexing!!!")
+
 	return nil
 }
 
