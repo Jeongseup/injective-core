@@ -124,18 +124,23 @@ func (eis *EVMIndexerService) OnStart() error {
 				eis.Logger.Error("failed to fetch block", "height", i, "err", err)
 				break
 			}
+			eis.Logger.Info("✅ 새로운 블록을 받았습니다", "height", i)
 			blockResult, err = eis.client.BlockResults(ctx, &i)
 			if err != nil {
 				if eis.allowGap && strings.Contains(err.Error(), NotFoundErr) {
 					continue
 				}
+				// 여기서 발생하고 아래가 멈추는게 문제
 				eis.Logger.Error("failed to fetch block result", "height", i, "err", err)
-				break
+				eis.Logger.Info("⚠️ 새로운 블록 결과받지 못했으나 해당 높이를 패스합니다", "height", i)
+				// break
 			}
+			eis.Logger.Info("✅ 새로운 블록 결과를 받았습니다", "height", i)
 			if err := eis.txIdxr.IndexBlock(block.Block, blockResult.TxResults); err != nil {
 				eis.Logger.Error("failed to index block", "height", i, "err", err)
 			}
 			lastBlock = blockResult.Height
+			eis.Logger.Info("✅ lastBlock을 업데이트합니다", "height", i)
 		}
 		if err != nil {
 			time.Sleep(ErrorBackoffDuration)
