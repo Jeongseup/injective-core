@@ -71,6 +71,7 @@ func (eis *EVMIndexerService) OnStart() error {
 			msg := <-blockHeadersChan
 			eventDataHeader := msg.Data.(types.EventDataNewBlockHeader)
 			if eventDataHeader.Header.Height > latestBlock {
+				eis.Logger.Info("✅ got new event data header", "height", eventDataHeader.Header.Height)
 				latestBlock = eventDataHeader.Header.Height
 				// notify
 				select {
