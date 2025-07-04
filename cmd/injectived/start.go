@@ -748,7 +748,7 @@ func startJSONRPCServer(
 			return
 		}
 
-		idxLogger := svrCtx.Logger.With("indexer", "evm")
+		idxLogger := svrCtx.Logger.With("indexer", "evm").With("custom", "👻")
 		idxer = ethindexer.NewKVIndexer(idxDB, idxLogger, clientCtx)
 		indexerService := ethserver.NewEVMIndexerService(idxer, clientCtx.Client.(rpcclient.Client), jsonRPCConfig.AllowIndexerGap)
 		indexerService.SetLogger(servercmtlog.CometLoggerWrapper{Logger: idxLogger})
@@ -756,7 +756,7 @@ func startJSONRPCServer(
 		g.Go(func() error {
 			defer func() {
 				if e := recover(); e != nil {
-					idxLogger.Error("panic in indexer service", "error", e)
+					idxLogger.Error("⚠️ panic in indexer service", "error", e)
 				}
 			}()
 
@@ -765,7 +765,7 @@ func startJSONRPCServer(
 					idxLogger.Error("failed to close indexer DB", "error", err.Error())
 				}
 			}()
-
+			idxLogger.Warn("⚠️ 인덱서 start!")
 			return indexerService.Start()
 		})
 	}
