@@ -142,6 +142,27 @@ func (eis *EVMIndexerService) OnStart() error {
 				eis.Logger.Error("⚠️ 새로운 블록 결과받지 못했으나 해당 높이를 패스합니다", "height", i)
 				// break
 			}
+			// --- 🕵️‍♂️ 디버깅을 위한 nil 체크 추가 ---
+			if eis.txIdxr == nil {
+				panic("FATAL: eis.txIdxr is nil. It was not initialized properly.")
+			}
+			if block == nil {
+				panic("FATAL: 'block' object is nil before indexing.")
+			}
+			if block.Block == nil {
+				// block 객체는 존재하지만 내부의 Block 필드가 nil인 경우
+				panic("FATAL: 'block.Block' field is nil before indexing.")
+			}
+			if blockResult == nil {
+				panic("FATAL: 'blockResult' object is nil before indexing.")
+			}
+			// blockResult.TxResults는 nil일 수 있지만, 많은 경우 빈 슬라이스와 동일하게 처리 가능하므로 경고만 기록합니다.
+			// 만약 IndexBlock 내부에서 nil 슬라이스를 처리하지 못해 패닉이 발생한다면 이 부분도 panic으로 바꿔 테스트해볼 수 있습니다.
+			if blockResult.TxResults == nil {
+				eis.Logger.Error("blockResult.TxResults is nil, but this might be acceptable", "height", i)
+			}
+			// --- 여기까지 디버깅 코드 ---
+
 			eis.Logger.Error("✅ 새로운 블록 결과를 받았습니다", "height", i)
 			if err := eis.txIdxr.IndexBlock(block.Block, blockResult.TxResults); err != nil {
 				eis.Logger.Error("failed to index block", "height", i, "err", err)
