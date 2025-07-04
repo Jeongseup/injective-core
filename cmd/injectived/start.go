@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"time"
 
@@ -757,8 +758,14 @@ func startJSONRPCServer(
 			defer func() {
 				if e := recover(); e != nil {
 					idxLogger.Error("⚠️ panic in indexer service", "error", e)
+					idxLogger.Error("panic stacktrace", "trace", string(debug.Stack()))
 				}
 			}()
+			// defer func() {
+			// 	if e := recover(); e != nil {
+			// 		idxLogger.Error("⚠️ panic in indexer service", "error", e)
+			// 	}
+			// }()
 
 			defer func() {
 				if err := idxDB.Close(); err != nil {
