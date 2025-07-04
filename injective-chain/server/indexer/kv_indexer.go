@@ -47,6 +47,7 @@ func NewKVIndexer(db dbm.DB, logger log.Logger, clientCtx client.Context) *KVInd
 // - Iterates over all the messages of the Tx
 // - Builds and stores a indexer.TxResult based on parsed events for every message
 func (kv *KVIndexer) IndexBlock(block *cmtypes.Block, txResults []*abci.ExecTxResult) (err error) {
+	fmt.Printf("⚠️ IndexBlock start!")
 	kv.logger.Warn("⚠️ IndexBlock start!")
 	defer func(err *error) {
 		if e := recover(); e != nil {
