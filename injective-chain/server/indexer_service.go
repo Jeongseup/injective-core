@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	chaintypes "github.com/InjectiveLabs/injective-core/injective-chain/types"
@@ -123,52 +122,35 @@ func (eis *EVMIndexerService) OnStart() error {
 			blockResult *ctypes.ResultBlockResults
 		)
 		for i := lastBlock + 1; i <= latestBlock; i++ {
+			// 1. Block 가져오기 및 유효성 검사
 			block, err = eis.client.Block(ctx, &i)
-			if err != nil {
-				if eis.allowGap && strings.Contains(err.Error(), NotFoundErr) {
-					continue
-				}
-				eis.Logger.Error("failed to fetch block", "height", i, "err", err)
-				break
+			if err != nil || block == nil {
+				// 오류가 발생했거나, 오류는 없지만 block 객체가 nil인 경우
+				eis.Logger.Error("⚠️ failed to fetch block or block is nil, skipping height", "height", i, "err", err)
+				continue // 다음 높이로 넘어갑니다.
 			}
-			eis.Logger.Error("✅ 새로운 블록을 받았습니다", "height", i)
-			blockResult, err = eis.client.BlockResults(ctx, &i)
-			if err != nil {
-				if eis.allowGap && strings.Contains(err.Error(), NotFoundErr) {
-					continue
-				}
-				// 여기서 발생하고 아래가 멈추는게 문제
-				eis.Logger.Error("failed to fetch block result", "height", i, "err", err)
-				eis.Logger.Error("⚠️ 새로운 블록 결과받지 못했으나 해당 높이를 패스합니다", "height", i)
-				// break
-			}
-			// --- 🕵️‍♂️ 디버깅을 위한 nil 체크 추가 ---
-			if eis.txIdxr == nil {
-				panic("FATAL: eis.txIdxr is nil. It was not initialized properly.")
-			}
-			if block == nil {
-				panic("FATAL: 'block' object is nil before indexing.")
-			}
-			if block.Block == nil {
-				// block 객체는 존재하지만 내부의 Block 필드가 nil인 경우
-				panic("FATAL: 'block.Block' field is nil before indexing.")
-			}
-			if blockResult == nil {
-				panic("FATAL: 'blockResult' object is nil before indexing.")
-			}
-			// blockResult.TxResults는 nil일 수 있지만, 많은 경우 빈 슬라이스와 동일하게 처리 가능하므로 경고만 기록합니다.
-			// 만약 IndexBlock 내부에서 nil 슬라이스를 처리하지 못해 패닉이 발생한다면 이 부분도 panic으로 바꿔 테스트해볼 수 있습니다.
-			if blockResult.TxResults == nil {
-				eis.Logger.Error("blockResult.TxResults is nil, but this might be acceptable", "height", i)
-			}
-			// --- 여기까지 디버깅 코드 ---
+			eis.Logger.Info("✅ received new block", "height", i)
 
-			eis.Logger.Error("✅ 새로운 블록 결과를 받았습니다", "height", i)
+			// 2. BlockResults 가져오기 및 유효성 검사
+			blockResult, err = eis.client.BlockResults(ctx, &i)
+			if err != nil || blockResult == nil {
+				// 오류가 발생했거나, 오류는 없지만 blockResult 객체가 nil인 경우
+				eis.Logger.Error("⚠️ failed to fetch block result or result is nil, skipping height", "height", i, "err", err)
+				continue // 다음 높이로 넘어갑니다.
+			}
+			eis.Logger.Info("✅ received new block results", "height", i)
+
+			// 3. 모든 데이터가 유효한 경우에만 인덱싱 수행
 			if err := eis.txIdxr.IndexBlock(block.Block, blockResult.TxResults); err != nil {
 				eis.Logger.Error("failed to index block", "height", i, "err", err)
+				// 인덱싱 실패 시에도 일단 다음 블록으로 넘어갑니다.
+				// 만약 인덱싱 실패 시 멈춰야 한다면 여기에 'break'를 추가하세요.
+				eis.Logger.Info("⚠️ failed to updated IndexBlock but skipped the block", "height", lastBlock)
+			} else {
+				// 인덱싱이 성공한 경우에만 lastBlock을 업데이트합니다.
+				lastBlock = blockResult.Height
+				eis.Logger.Info("✅ updated lastBlock", "height", lastBlock)
 			}
-			lastBlock = blockResult.Height
-			eis.Logger.Error("✅ lastBlock을 업데이트합니다", "height", i)
 		}
 		if err != nil {
 			time.Sleep(ErrorBackoffDuration)
