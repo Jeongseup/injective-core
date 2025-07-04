@@ -71,7 +71,7 @@ func (eis *EVMIndexerService) OnStart() error {
 			msg := <-blockHeadersChan
 			eventDataHeader := msg.Data.(types.EventDataNewBlockHeader)
 			if eventDataHeader.Header.Height > latestBlock {
-				eis.Logger.Info("✅ got new event data header", "height", eventDataHeader.Header.Height)
+				eis.Logger.Error("✅ got new event data header", "height", eventDataHeader.Header.Height)
 				latestBlock = eventDataHeader.Header.Height
 				// notify
 				select {
@@ -88,16 +88,20 @@ func (eis *EVMIndexerService) OnStart() error {
 	}
 	if lastBlock == -1 {
 		lastBlock = latestBlock
+		eis.Logger.Error("❗️ lastBlock == -1 입니다.", "height", latestBlock)
 	} else if lastBlock < status.SyncInfo.EarliestBlockHeight {
 		if !eis.allowGap {
 			panic("Block gap detected, please recover the missing data")
 		}
 		// to avoid infinite failed to fetch block error when lastBlock is smaller than earliest
 		lastBlock = status.SyncInfo.EarliestBlockHeight
+		eis.Logger.Error("❗️ lastBlock < status.SyncInfo.EarliestBlockHeight 입니다.", "height", latestBlock)
 	}
 	// to avoid height must be greater than 0 error
 	if lastBlock <= 0 {
 		lastBlock = 1
+		eis.Logger.Error("❗️ lastBlock 이 0보다 작어서 1이 됩니다.", "height", latestBlock)
+
 	}
 
 	for {
@@ -108,6 +112,8 @@ func (eis *EVMIndexerService) OnStart() error {
 			case <-newBlockSignal:
 			case <-time.After(NewBlockWaitTimeout):
 			}
+			eis.Logger.Error("❗️ latestBlock <= lastBlock 때문에 로직이 스킵", "height", latestBlock)
+
 			continue
 		}
 		var (
@@ -124,7 +130,7 @@ func (eis *EVMIndexerService) OnStart() error {
 				eis.Logger.Error("failed to fetch block", "height", i, "err", err)
 				break
 			}
-			eis.Logger.Info("✅ 새로운 블록을 받았습니다", "height", i)
+			eis.Logger.Error("✅ 새로운 블록을 받았습니다", "height", i)
 			blockResult, err = eis.client.BlockResults(ctx, &i)
 			if err != nil {
 				if eis.allowGap && strings.Contains(err.Error(), NotFoundErr) {
@@ -132,15 +138,15 @@ func (eis *EVMIndexerService) OnStart() error {
 				}
 				// 여기서 발생하고 아래가 멈추는게 문제
 				eis.Logger.Error("failed to fetch block result", "height", i, "err", err)
-				eis.Logger.Info("⚠️ 새로운 블록 결과받지 못했으나 해당 높이를 패스합니다", "height", i)
+				eis.Logger.Error("⚠️ 새로운 블록 결과받지 못했으나 해당 높이를 패스합니다", "height", i)
 				// break
 			}
-			eis.Logger.Info("✅ 새로운 블록 결과를 받았습니다", "height", i)
+			eis.Logger.Error("✅ 새로운 블록 결과를 받았습니다", "height", i)
 			if err := eis.txIdxr.IndexBlock(block.Block, blockResult.TxResults); err != nil {
 				eis.Logger.Error("failed to index block", "height", i, "err", err)
 			}
 			lastBlock = blockResult.Height
-			eis.Logger.Info("✅ lastBlock을 업데이트합니다", "height", i)
+			eis.Logger.Error("✅ lastBlock을 업데이트합니다", "height", i)
 		}
 		if err != nil {
 			time.Sleep(ErrorBackoffDuration)
