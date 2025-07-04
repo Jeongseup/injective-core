@@ -751,7 +751,7 @@ func startJSONRPCServer(
 
 		idxLogger := svrCtx.Logger.With("indexer", "evm").With("custom", "👻")
 		idxer = ethindexer.NewKVIndexer(idxDB, idxLogger, clientCtx)
-		indexerService := ethserver.NewEVMIndexerService(idxer, clientCtx.Client.(rpcclient.Client), jsonRPCConfig.AllowIndexerGap)
+		indexerService := ethserver.NewEVMIndexerService(idxer, clientCtx.Client.(rpcclient.Client), jsonRPCConfig.AllowIndexerGap, servercmtlog.CometLoggerWrapper{Logger: idxLogger})
 		indexerService.SetLogger(servercmtlog.CometLoggerWrapper{Logger: idxLogger})
 
 		g.Go(func() error {

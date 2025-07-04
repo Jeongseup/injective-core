@@ -37,9 +37,10 @@ func NewEVMIndexerService(
 	txIdxr chaintypes.EVMTxIndexer,
 	client rpcclient.Client,
 	allowGap bool,
+	logger log.Logger,
 ) *EVMIndexerService {
 	is := &EVMIndexerService{txIdxr: txIdxr, client: client, allowGap: allowGap}
-	is.BaseService = *service.NewBaseService(log.NewNopLogger(), ServiceName, is)
+	is.BaseService = *service.NewBaseService(logger, ServiceName, is)
 	return is
 }
 
